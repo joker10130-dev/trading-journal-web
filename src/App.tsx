@@ -1,40 +1,31 @@
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
   CircleHelp,
-  CircleUserRound,
   FileSpreadsheet,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Trash2,
   Upload,
   X,
 } from 'lucide-react'
+import AuthScreen from './components/auth-screen'
+import TradeEditorModal from './components/trade-editor-modal'
+import { type Trade } from './lib/trade'
 import './App.css'
 
 const PnlChart = lazy(() => import('./components/pnl-chart'))
 
-type Trade = {
-  ticket: string
-  symbol: string
-  side: 'LONG' | 'SHORT'
-  size: number
-  entry: number
-  exit: number
-  pnl: number
-  risk: number | null
-  r: number | null
-  closed: string
-  closes: number
-  comment: string
-}
-
 const trades: Trade[] = [
-  { ticket: '1246214425', symbol: 'XAUUSD', side: 'SHORT', size: 0.02, entry: 4183.74, exit: 4183.08, pnl: 1.32, risk: 20, r: 0.07, closed: '2026-10-02T11:04:07', closes: 1, comment: 'MARKET GTC COMPLETED' },
-  { ticket: '1246237056', symbol: 'XAUUSD', side: 'SHORT', size: 0.02, entry: 4185.2, exit: 4195.3, pnl: -20.2, risk: 20, r: -1.01, closed: '2026-10-02T13:04:18', closes: 1, comment: 'STOP GTC COMPLETED' },
-  { ticket: '1247862625', symbol: 'XAUUSD', side: 'LONG', size: 0.01, entry: 4129.79, exit: 4118.38, pnl: -11.41, risk: 10, r: -1.14, closed: '2026-10-06T09:35:04', closes: 1, comment: 'STOP GTC COMPLETED' },
-  { ticket: '1248616142', symbol: 'XAUUSD', side: 'LONG', size: 0.01, entry: 4146.63, exit: 4136.69, pnl: -9.94, risk: 10, r: -0.99, closed: '2026-10-07T11:54:24', closes: 1, comment: 'STOP GTC COMPLETED' },
-  { ticket: '1250162056', symbol: 'XAUUSD', side: 'SHORT', size: 0.01, entry: 4174.41, exit: 4184.28, pnl: -9.87, risk: 9.94, r: -0.99, closed: '2026-10-09T11:33:36', closes: 1, comment: 'STOP GTC COMPLETED' },
-  { ticket: '1250232985', symbol: 'XAUUSD', side: 'SHORT', size: 0.01, entry: 4178.6, exit: 4188.62, pnl: -10.02, risk: 10, r: -1, closed: '2026-10-09T12:16:27', closes: 1, comment: 'STOP GTC COMPLETED' },
-  { ticket: '1250803562', symbol: 'BTCUSD', side: 'LONG', size: 0.02, entry: 82994, exit: 82958.5, pnl: -0.72, risk: null, r: null, closed: '2026-10-10T22:50:08', closes: 2, comment: 'MARKET GTC COMPLETED' },
+  { id: '1246214425', ticket: '1246214425', source: 'IMPORT', symbol: 'XAUUSD', side: 'SHORT', size: 0.02, entry: 4183.74, exit: 4183.08, profit: 1.32, swaps: 0, commission: 0, pnl: 1.32, risk: 20, initialSlPrice: null, riskSource: 'TRADINGVIEW', r: 0.07, opened: null, closed: '2026-10-02T11:04:07', closes: 1, comment: 'MARKET GTC COMPLETED', tags: [], notes: '' },
+  { id: '1246237056', ticket: '1246237056', source: 'IMPORT', symbol: 'XAUUSD', side: 'SHORT', size: 0.02, entry: 4185.2, exit: 4195.3, profit: -20.2, swaps: 0, commission: 0, pnl: -20.2, risk: 20, initialSlPrice: null, riskSource: 'TRADINGVIEW', r: -1.01, opened: null, closed: '2026-10-02T13:04:18', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
+  { id: '1247862625', ticket: '1247862625', source: 'IMPORT', symbol: 'XAUUSD', side: 'LONG', size: 0.01, entry: 4129.79, exit: 4118.38, profit: -11.41, swaps: 0, commission: 0, pnl: -11.41, risk: 10, initialSlPrice: null, riskSource: 'TRADINGVIEW', r: -1.14, opened: null, closed: '2026-10-06T09:35:04', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
+  { id: '1248616142', ticket: '1248616142', source: 'IMPORT', symbol: 'XAUUSD', side: 'LONG', size: 0.01, entry: 4146.63, exit: 4136.69, profit: -9.94, swaps: 0, commission: 0, pnl: -9.94, risk: 10, initialSlPrice: null, riskSource: 'TRADINGVIEW', r: -0.99, opened: null, closed: '2026-10-07T11:54:24', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
+  { id: '1250162056', ticket: '1250162056', source: 'IMPORT', symbol: 'XAUUSD', side: 'SHORT', size: 0.01, entry: 4174.41, exit: 4184.28, profit: -9.87, swaps: 0, commission: 0, pnl: -9.87, risk: 9.94, initialSlPrice: null, riskSource: 'TRADINGVIEW', r: -0.99, opened: null, closed: '2026-10-09T11:33:36', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
+  { id: '1250232985', ticket: '1250232985', source: 'IMPORT', symbol: 'XAUUSD', side: 'SHORT', size: 0.01, entry: 4178.6, exit: 4188.62, profit: -10.02, swaps: 0, commission: 0, pnl: -10.02, risk: 10, initialSlPrice: null, riskSource: 'TRADINGVIEW', r: -1, opened: null, closed: '2026-10-09T12:16:27', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
+  { id: '1250803562', ticket: '1250803562', source: 'IMPORT', symbol: 'BTCUSD', side: 'LONG', size: 0.02, entry: 82994, exit: 82958.5, profit: -0.72, swaps: 0, commission: 0, pnl: -0.72, risk: null, initialSlPrice: null, riskSource: null, r: null, opened: null, closed: '2026-10-10T22:50:08', closes: 2, comment: 'MARKET GTC COMPLETED', tags: [], notes: '' },
 ]
 
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -46,25 +37,56 @@ const tradeDay = (trade: Trade) => trade.closed.slice(0, 10)
 const valueClass = (value: number) => value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral'
 
 function App() {
+  const [authenticatedEmail, setAuthenticatedEmail] = useState<string | null>(null)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+  const [toastMessage, setToastMessage] = useState('')
   const [month, setMonth] = useState(new Date(2026, 9, 1))
   const [accountEnabled, setAccountEnabled] = useState(true)
   const [symbols, setSymbols] = useState<string[]>(['XAUUSD', 'BTCUSD'])
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null)
+  const [tradeRows, setTradeRows] = useState(trades)
+  const [deletedTrades, setDeletedTrades] = useState<Trade[]>([])
+  const [showDeletedTrades, setShowDeletedTrades] = useState(false)
+  const [tradeEditor, setTradeEditor] = useState<{ trade: Trade | null } | null>(null)
+  const [tradeToDelete, setTradeToDelete] = useState<Trade | null>(null)
   const [showReminder, setShowReminder] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [files, setFiles] = useState<File[]>([])
 
+  useEffect(() => {
+    if (!showUserMenu) return
+
+    function closeOnOutsideClick(event: MouseEvent) {
+      if (event.target instanceof Node && !userMenuRef.current?.contains(event.target)) {
+        setShowUserMenu(false)
+      }
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setShowUserMenu(false)
+    }
+
+    document.addEventListener('mousedown', closeOnOutsideClick)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [showUserMenu])
+
   const monthKey = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`
   const monthTrades = useMemo(
-    () => trades.filter((trade) => accountEnabled && trade.closed.startsWith(monthKey) && symbols.includes(trade.symbol)),
-    [accountEnabled, monthKey, symbols],
+    () => tradeRows.filter((trade) => accountEnabled && trade.closed.startsWith(monthKey) && symbols.includes(trade.symbol)),
+    [accountEnabled, monthKey, symbols, tradeRows],
   )
   const visibleTrades = useMemo(
-    () => monthTrades
+    () => (showDeletedTrades
+      ? deletedTrades.filter((trade) => accountEnabled && trade.closed.startsWith(monthKey) && symbols.includes(trade.symbol))
+      : monthTrades)
       .filter((trade) => !selectedDay || tradeDay(trade) === selectedDay)
       .sort((a, b) => b.closed.localeCompare(a.closed)),
-    [monthTrades, selectedDay],
+    [accountEnabled, deletedTrades, monthKey, monthTrades, selectedDay, showDeletedTrades, symbols],
   )
   const stats = useMemo(() => {
     const pnl = monthTrades.reduce((total, trade) => total + trade.pnl, 0)
@@ -76,7 +98,7 @@ function App() {
     const byDay = new Map<string, number>()
     withR.forEach((trade) => byDay.set(tradeDay(trade), (byDay.get(tradeDay(trade)) ?? 0) + (trade.r ?? 0)))
     let streak = 0
-    for (const dailyR of [...byDay.values()].reverse()) {
+    for (const [, dailyR] of [...byDay.entries()].sort(([left], [right]) => right.localeCompare(left))) {
       if (dailyR <= 0) break
       streak += 1
     }
@@ -171,6 +193,63 @@ function App() {
     setSelectedDay(null)
   }
 
+  function signOut() {
+    setShowUserMenu(false)
+    setAuthenticatedEmail(null)
+    setSelectedTrade(null)
+    setTradeEditor(null)
+    setTradeToDelete(null)
+    setTradeRows(trades)
+    setDeletedTrades([])
+    setShowDeletedTrades(false)
+    setShowImport(false)
+    setShowReminder(false)
+    setFiles([])
+    setToastMessage('')
+  }
+
+  function addTrade() {
+    setShowDeletedTrades(false)
+    setTradeEditor({ trade: null })
+  }
+
+  function saveTrade(trade: Trade) {
+    const wasEditing = Boolean(tradeEditor?.trade)
+    if (tradeEditor?.trade) {
+      setTradeRows((current) => current.map((item) => item.id === trade.id ? trade : item))
+    } else {
+      setTradeRows((current) => [trade, ...current])
+    }
+    setTradeEditor(null)
+    setSelectedTrade(null)
+    setSelectedDay(null)
+    setShowDeletedTrades(false)
+    setToastMessage(wasEditing ? 'Trade updated' : 'Trade added')
+  }
+
+  function editTrade(trade: Trade) {
+    setSelectedTrade(null)
+    setTradeEditor({ trade })
+  }
+
+  function confirmDeleteTrade() {
+    if (!tradeToDelete) return
+    const action = tradeToDelete.source === 'IMPORT' ? 'hidden' : 'deleted'
+    setTradeRows((current) => current.filter((trade) => trade.id !== tradeToDelete.id))
+    setDeletedTrades((current) => [tradeToDelete, ...current])
+    setTradeToDelete(null)
+    setSelectedTrade(null)
+    setToastMessage(`Trade ${action}`)
+  }
+
+  function restoreTrade(id: string) {
+    const trade = deletedTrades.find((item) => item.id === id)
+    if (!trade) return
+    setDeletedTrades((current) => current.filter((item) => item.id !== id))
+    setTradeRows((current) => [trade, ...current])
+    setToastMessage('Trade restored')
+  }
+
   function snoozeReminder() {
     const nextMonday = new Date()
     nextMonday.setDate(nextMonday.getDate() + ((8 - nextMonday.getDay()) % 7 || 7))
@@ -190,6 +269,9 @@ function App() {
 
   return (
     <div className="app-shell">
+      {!authenticatedEmail
+        ? <AuthScreen onAuthenticated={setAuthenticatedEmail} />
+        : <>
       <header className="app-header">
         <a className="brand" href="#dashboard">Trading Journal</a>
         <nav className="period-tabs" aria-label="Date range">
@@ -208,9 +290,28 @@ function App() {
         <button className={`period-tab reminder-preview ${showReminder ? 'period-tab-active' : ''}`} onClick={() => setShowReminder((showing) => !showing)} type="button">
           Preview reminder
         </button>
-        <div className="account-identity" title="Authentication is not connected in this demo">
-          <CircleUserRound size={16} aria-hidden="true" />
-          <span>Demo user</span>
+        <div className="account-menu" ref={userMenuRef}>
+          <button
+            className="account-trigger"
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={showUserMenu}
+            aria-label="Account menu"
+            onClick={() => setShowUserMenu((open) => !open)}
+          >
+            <span className="account-avatar" aria-hidden="true">{authenticatedEmail.split('@')[0].slice(0, 2).toUpperCase()}</span>
+          </button>
+          {showUserMenu && (
+            <div className="account-dropdown" role="menu">
+              <div className="account-menu-heading">
+                <strong>Trader</strong>
+                <span>{authenticatedEmail}</span>
+              </div>
+              <button className="account-menu-item account-signout" type="button" role="menuitem" onClick={signOut}>
+                Sign out
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -218,7 +319,7 @@ function App() {
         <span className="filter-title">Account:</span>
         <label className="filter-control">
           <input type="checkbox" checked={accountEnabled} onChange={(event) => { setAccountEnabled(event.target.checked); setSelectedDay(null) }} />
-          Eightcap · 70508581 (USD)
+          Eightcap · xxxxxxxx (USD)
         </label>
         <span className="filter-title symbol-title">Symbol:</span>
         {['XAUUSD', 'BTCUSD'].map((symbol) => (
@@ -232,7 +333,7 @@ function App() {
 
       {showReminder && (
         <div className="reminder-banner">
-          <span>Account <strong>Eightcap · 70508581</strong> has not been imported for 9 days. Older data may drop out of TradingView’s 199-row window.</span>
+          <span>Account <strong>Eightcap · xxxxxxxx</strong> has not been imported for 9 days. Older data may drop out of TradingView’s 199-row window.</span>
           <button onClick={() => { setFiles([]); setShowImport(true) }} type="button">Import now</button>
           <button className="snooze-button" onClick={snoozeReminder} type="button">Remind me next Monday</button>
         </div>
@@ -336,17 +437,36 @@ function App() {
         <section className="panel trades-panel" id="trades">
           <div className="panel-heading trades-heading">
             <h2>Trades</h2>
-            <span className="trade-count">{visibleTrades.length} items</span>
+            {!showDeletedTrades && <button className="trade-add-button" onClick={addTrade} type="button"><Plus size={14} /> Add trade</button>}
+            <span className="trade-heading-meta">
+              {deletedTrades.length > 0 && (
+                <button className="trade-link-button" onClick={() => { setShowDeletedTrades((showing) => !showing); setSelectedDay(null) }} type="button">
+                  {showDeletedTrades ? 'Hide deleted trades' : `Show hidden (${deletedTrades.length})`}
+                </button>
+              )}
+              <span className="trade-count">{visibleTrades.length} items</span>
+            </span>
           </div>
           <div className="table-scroll">
             <table className="trade-table">
               <thead><tr>
                 <th>Pair</th><th>Side</th><th className="numeric">Size</th><th>Entry → Exit</th><th>Closed</th>
-                <th className="numeric">P&amp;L (USD)</th><th className="numeric">R</th><th>Source</th>
+                <th className="numeric">P&amp;L (USD)</th><th className="numeric">R</th><th>Source</th><th className="numeric">Actions</th>
               </tr></thead>
               <tbody>
                 {visibleTrades.map((trade) => (
-                  <tr className="trade-row" key={trade.ticket} onClick={() => setSelectedTrade(trade)} tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter') setSelectedTrade(trade) }}>
+                  <tr
+                    className="trade-row"
+                    key={trade.id}
+                    onClick={() => setSelectedTrade(trade)}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                        event.preventDefault()
+                        setSelectedTrade(trade)
+                      }
+                    }}
+                  >
                     <td><strong>{trade.symbol}</strong></td>
                     <td><span className={`side-badge ${trade.side === 'LONG' ? 'badge-long' : 'badge-short'}`}>{trade.side}</span></td>
                     <td className="numeric">{trade.size.toFixed(2)}</td>
@@ -354,15 +474,46 @@ function App() {
                     <td>{new Date(trade.closed).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' })} {new Date(trade.closed).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
                     <td className={`numeric ${valueClass(trade.pnl)}`}>{fmtMoney(trade.pnl)}</td>
                     <td className="numeric">{trade.r === null ? <span className="no-risk" title="No initial stop loss value">—</span> : <span className={valueClass(trade.r)}>{fmtR(trade.r)}</span>}</td>
-                    <td className="source-cell">Eightcap · {trade.ticket}{trade.closes > 1 && <span> · closed {trade.closes} times</span>}</td>
+                    <td className="source-cell">{trade.source === 'MANUAL' ? 'Manual' : `Eightcap · ${trade.ticket || '—'}`}{trade.closes > 1 && <span> · closed {trade.closes} times</span>}</td>
+                    <td className="trade-actions" onClick={(event) => event.stopPropagation()}>
+                      {showDeletedTrades
+                        ? <button className="row-action restore-action" onClick={() => restoreTrade(trade.id)} aria-label={`Restore ${trade.symbol} trade`} title="Restore trade" type="button"><RotateCcw size={15} /></button>
+                        : <>
+                          <button className="row-action" onClick={() => editTrade(trade)} aria-label={`Edit trade ${trade.symbol} ${trade.closed.slice(5, 10)}`} title="Edit" type="button"><Pencil size={15} /></button>
+                          <button className="row-action delete-action" onClick={() => setTradeToDelete(trade)} aria-label={`${trade.source === 'IMPORT' ? 'Hide' : 'Delete'} trade ${trade.symbol} ${trade.closed.slice(5, 10)}`} title={trade.source === 'IMPORT' ? 'Hide' : 'Delete'} type="button"><Trash2 size={15} /></button>
+                        </>}
+                    </td>
                   </tr>
                 ))}
-                {visibleTrades.length === 0 && <tr><td className="empty-table" colSpan={8}>No trades in this selection.</td></tr>}
+                {visibleTrades.length === 0 && <tr><td className="empty-table" colSpan={9}>{showDeletedTrades ? 'No deleted trades in this selection.' : 'No trades in this selection.'}</td></tr>}
               </tbody>
             </table>
           </div>
         </section>
       </main>
+
+      {tradeEditor && <TradeEditorModal trade={tradeEditor.trade} onClose={() => setTradeEditor(null)} onSave={saveTrade} />}
+
+      {tradeToDelete && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setTradeToDelete(null) }}>
+          <section className="trade-modal delete-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-trade-title">
+            <h2 id="delete-trade-title">{tradeToDelete.source === 'IMPORT' ? 'Hide this trade?' : 'Delete this trade?'}</h2>
+            <p className="delete-confirm-copy">
+              {tradeToDelete.symbol} {tradeToDelete.side.toLowerCase()} · {tradeToDelete.ticket ? `ticket ${tradeToDelete.ticket}` : 'manual trade'} · {fmtMoney(tradeToDelete.pnl)} USD<br />
+              {tradeToDelete.source === 'IMPORT'
+                ? 'It is excluded from all stats but kept with your imported data, so importing the same file again won’t bring it back. You can restore it later.'
+                : 'This manual trade is removed from your stats.'}
+            </p>
+            <div className="trade-modal-footer">
+              <span />
+              <button className="secondary-button" onClick={() => setTradeToDelete(null)} type="button">Cancel</button>
+              <button className="delete-confirm-button" onClick={confirmDeleteTrade} type="button">{tradeToDelete.source === 'IMPORT' ? 'Hide' : 'Delete'}</button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {toastMessage && <div className="trade-toast" role="status">{toastMessage}</div>}
 
       {showImport && (
         <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowImport(false) }}>
@@ -399,9 +550,18 @@ function App() {
               ? <div className="risk-note"><CircleHelp size={16} /><span>No initial stop loss in source. R cannot be calculated.</span></div>
               : <div className="risk-note">Risk from initial SL: {selectedTrade.risk.toFixed(2)} USD · R = net P&amp;L ÷ risk</div>}
             <div className="detail-source"><span>Source</span><strong>Eightcap Trades Report</strong></div>
+            <div className="detail-actions">
+              <button className="secondary-button" type="button" onClick={() => editTrade(selectedTrade)}>
+                {selectedTrade.source === 'IMPORT' ? 'Edit SL / risk' : 'Edit trade'}
+              </button>
+              <button className="detail-delete-button" type="button" onClick={() => { setTradeToDelete(selectedTrade); setSelectedTrade(null) }}>
+                {selectedTrade.source === 'IMPORT' ? 'Hide trade' : 'Delete trade'}
+              </button>
+            </div>
           </aside>
         </div>
       )}
+      </>}
     </div>
   )
 }
