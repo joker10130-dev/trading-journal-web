@@ -19,13 +19,13 @@ import './App.css'
 const PnlChart = lazy(() => import('./components/pnl-chart'))
 
 const trades: Trade[] = [
-  { id: '1246214425', ticket: '1246214425', source: 'IMPORT', symbol: 'XAUUSD', side: 'SHORT', size: 0.02, entry: 4183.74, exit: 4183.08, profit: 1.32, swaps: 0, commission: 0, pnl: 1.32, risk: 20, initialSlPrice: null, riskSource: 'TRADINGVIEW', r: 0.07, opened: null, closed: '2026-10-02T11:04:07', closes: 1, comment: 'MARKET GTC COMPLETED', tags: [], notes: '' },
-  { id: '1246237056', ticket: '1246237056', source: 'IMPORT', symbol: 'XAUUSD', side: 'SHORT', size: 0.02, entry: 4185.2, exit: 4195.3, profit: -20.2, swaps: 0, commission: 0, pnl: -20.2, risk: 20, initialSlPrice: null, riskSource: 'TRADINGVIEW', r: -1.01, opened: null, closed: '2026-10-02T13:04:18', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
-  { id: '1247862625', ticket: '1247862625', source: 'IMPORT', symbol: 'XAUUSD', side: 'LONG', size: 0.01, entry: 4129.79, exit: 4118.38, profit: -11.41, swaps: 0, commission: 0, pnl: -11.41, risk: 10, initialSlPrice: null, riskSource: 'TRADINGVIEW', r: -1.14, opened: null, closed: '2026-10-06T09:35:04', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
-  { id: '1248616142', ticket: '1248616142', source: 'IMPORT', symbol: 'XAUUSD', side: 'LONG', size: 0.01, entry: 4146.63, exit: 4136.69, profit: -9.94, swaps: 0, commission: 0, pnl: -9.94, risk: 10, initialSlPrice: null, riskSource: 'TRADINGVIEW', r: -0.99, opened: null, closed: '2026-10-07T11:54:24', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
-  { id: '1250162056', ticket: '1250162056', source: 'IMPORT', symbol: 'XAUUSD', side: 'SHORT', size: 0.01, entry: 4174.41, exit: 4184.28, profit: -9.87, swaps: 0, commission: 0, pnl: -9.87, risk: 9.94, initialSlPrice: null, riskSource: 'TRADINGVIEW', r: -0.99, opened: null, closed: '2026-10-09T11:33:36', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
-  { id: '1250232985', ticket: '1250232985', source: 'IMPORT', symbol: 'XAUUSD', side: 'SHORT', size: 0.01, entry: 4178.6, exit: 4188.62, profit: -10.02, swaps: 0, commission: 0, pnl: -10.02, risk: 10, initialSlPrice: null, riskSource: 'TRADINGVIEW', r: -1, opened: null, closed: '2026-10-09T12:16:27', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
-  { id: '1250803562', ticket: '1250803562', source: 'IMPORT', symbol: 'BTCUSD', side: 'LONG', size: 0.02, entry: 82994, exit: 82958.5, profit: -0.72, swaps: 0, commission: 0, pnl: -0.72, risk: null, initialSlPrice: null, riskSource: null, r: null, opened: null, closed: '2026-10-10T22:50:08', closes: 2, comment: 'MARKET GTC COMPLETED', tags: [], notes: '' },
+  { id: '1246214425', ticket: '1246214425', source: 'IMPORT', symbol: 'XAUUSD', side: 'SHORT', size: 0.02, entry: 4183.74, exit: 4183.08, profit: 1.32, swaps: 0, commission: 0, pnl: 1.32, r: null, rSource: 'NONE', opened: null, closed: '2026-10-02T11:04:07', closes: 1, comment: 'MARKET GTC COMPLETED', tags: [], notes: '' },
+  { id: '1246237056', ticket: '1246237056', source: 'IMPORT', symbol: 'XAUUSD', side: 'SHORT', size: 0.02, entry: 4185.2, exit: 4195.3, profit: -20.2, swaps: 0, commission: 0, pnl: -20.2, r: null, rSource: 'NONE', opened: null, closed: '2026-10-02T13:04:18', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
+  { id: '1247862625', ticket: '1247862625', source: 'IMPORT', symbol: 'XAUUSD', side: 'LONG', size: 0.01, entry: 4129.79, exit: 4118.38, profit: -11.41, swaps: 0, commission: 0, pnl: -11.41, r: null, rSource: 'NONE', opened: null, closed: '2026-10-06T09:35:04', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
+  { id: '1248616142', ticket: '1248616142', source: 'IMPORT', symbol: 'XAUUSD', side: 'LONG', size: 0.01, entry: 4146.63, exit: 4136.69, profit: -9.94, swaps: 0, commission: 0, pnl: -9.94, r: null, rSource: 'NONE', opened: null, closed: '2026-10-07T11:54:24', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
+  { id: '1250162056', ticket: '1250162056', source: 'IMPORT', symbol: 'XAUUSD', side: 'SHORT', size: 0.01, entry: 4174.41, exit: 4184.28, profit: -9.87, swaps: 0, commission: 0, pnl: -9.87, r: null, rSource: 'NONE', opened: null, closed: '2026-10-09T11:33:36', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
+  { id: '1250232985', ticket: '1250232985', source: 'IMPORT', symbol: 'XAUUSD', side: 'SHORT', size: 0.01, entry: 4178.6, exit: 4188.62, profit: -10.02, swaps: 0, commission: 0, pnl: -10.02, r: null, rSource: 'NONE', opened: null, closed: '2026-10-09T12:16:27', closes: 1, comment: 'STOP GTC COMPLETED', tags: [], notes: '' },
+  { id: '1250803562', ticket: '1250803562', source: 'IMPORT', symbol: 'BTCUSD', side: 'LONG', size: 0.02, entry: 82994, exit: 82958.5, profit: -0.72, swaps: 0, commission: 0, pnl: -0.72, r: null, rSource: 'NONE', opened: null, closed: '2026-10-10T22:50:08', closes: 2, comment: 'MARKET GTC COMPLETED', tags: [], notes: '' },
 ]
 
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -351,8 +351,8 @@ function App() {
             <div className={`metric-value ${valueClass(stats.totalR)}`}>{stats.withR ? fmtR(stats.totalR, 1) : '—'}</div>
             <div className="metric-sub">
               from {stats.withR}/{monthTrades.length} trades
-              {stats.noR > 0 && <span className="warning-text"> · rest have no SL</span>}
-              {stats.flagged > 0 && <span className="warning-text"> · {stats.flagged} flagged</span>}
+              {stats.noR > 0 && <span className="warning-text"> · {stats.noR} without R</span>}
+              {stats.flagged > 0 && <span className="warning-text"> · {stats.flagged} to review (|R| &gt; 5)</span>}
             </div>
           </article>
           <article className="metric-card">
@@ -360,7 +360,7 @@ function App() {
             <div className="metric-value">{stats.withR ? `${stats.winRate.toFixed(1)}%` : '—'}</div>
             <div className="metric-sub">
               {stats.wins} wins (R&gt;1) · {stats.smalls} small · {stats.losses} losses
-              {stats.noR > 0 && <span className="warning-text"> · {stats.noR} no SL</span>}
+              {stats.noR > 0 && <span className="warning-text"> · {stats.noR} without R</span>}
             </div>
           </article>
           <article className="metric-card">
@@ -397,7 +397,7 @@ function App() {
                   className={`calendar-day ${cell.count ? 'day-traded' : ''} ${cell.pnl < 0 ? 'day-loss' : ''} ${selectedDay === cell.key ? 'day-selected' : ''}`}
                   key={cell.key}
                   onClick={() => setSelectedDay((current) => current === cell.key ? null : cell.key)}
-                  aria-label={`${cell.key}: ${cell.count} trades, ${fmtMoney(cell.pnl)} USD, R ${cell.r === null ? 'not available' : fmtR(cell.r)} from ${cell.rCount} trades with known risk`}
+                  aria-label={`${cell.key}: ${cell.count} trades, ${fmtMoney(cell.pnl)} USD, R ${cell.r === null ? 'not entered' : fmtR(cell.r)} from ${cell.rCount} trades with entered R`}
                   aria-pressed={selectedDay === cell.key}
                   type="button"
                 >
@@ -405,7 +405,7 @@ function App() {
                   {cell.count > 0 && (
                     <>
                       <span className="day-amount">{fmtMoney(cell.pnl)}</span>
-                      <span className={`day-r ${cell.r === null ? 'day-r-missing' : valueClass(cell.r)}`} title={`R calculated from ${cell.rCount} of ${cell.count} trades with known risk`}>
+                      <span className={`day-r ${cell.r === null ? 'day-r-missing' : valueClass(cell.r)}`} title={`R entered for ${cell.rCount} of ${cell.count} trades`}>
                         R {cell.r === null ? '—' : fmtR(cell.r)}
                       </span>
                       <span className="day-count">{cell.count} trades</span>
@@ -429,7 +429,7 @@ function App() {
             </div>
             <div className="performance-note">
               <div className="metric-label">Performance note</div>
-              <p>Average R on trades with SL: <strong>{stats.averageR === null ? '—' : fmtR(stats.averageR)}</strong> · Max drawdown in range: <strong>{fmtMoney(stats.maxDrawdown)} USD</strong></p>
+              <p>Average R on trades with entered R: <strong>{stats.averageR === null ? '—' : fmtR(stats.averageR)}</strong> · Max drawdown in range: <strong>{fmtMoney(stats.maxDrawdown)} USD</strong></p>
             </div>
           </article>
         </section>
@@ -473,7 +473,7 @@ function App() {
                     <td>{trade.entry.toLocaleString('en-US')} → {trade.exit.toLocaleString('en-US')}</td>
                     <td>{new Date(trade.closed).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' })} {new Date(trade.closed).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
                     <td className={`numeric ${valueClass(trade.pnl)}`}>{fmtMoney(trade.pnl)}</td>
-                    <td className="numeric">{trade.r === null ? <span className="no-risk" title="No initial stop loss value">—</span> : <span className={valueClass(trade.r)}>{fmtR(trade.r)}</span>}</td>
+                    <td className="numeric">{trade.r === null ? <span className="no-risk" title="R not entered">—</span> : <><span className={valueClass(trade.r)}>{fmtR(trade.r)}</span>{Math.abs(trade.r) > 5 && <span className="warning-text" title="Review this manually entered R value"> · review</span>}</>}</td>
                     <td className="source-cell">{trade.source === 'MANUAL' ? 'Manual' : `Eightcap · ${trade.ticket || '—'}`}{trade.closes > 1 && <span> · closed {trade.closes} times</span>}</td>
                     <td className="trade-actions" onClick={(event) => event.stopPropagation()}>
                       {showDeletedTrades
@@ -543,16 +543,15 @@ function App() {
               <div><span>Average exit</span><strong>{selectedTrade.exit.toLocaleString('en-US')}</strong></div>
               <div><span>Position size</span><strong>{selectedTrade.size.toFixed(2)} lot</strong></div>
               <div><span>Closed</span><strong>{new Date(selectedTrade.closed).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</strong></div>
-              <div><span>R multiple</span><strong>{selectedTrade.r === null ? 'No SL' : fmtR(selectedTrade.r)}</strong></div>
+              <div><span>R multiple</span><strong>              {selectedTrade.r === null ? 'Not entered' : fmtR(selectedTrade.r)}</strong></div>
               <div><span>Close executions</span><strong>{selectedTrade.closes}</strong></div>
             </div>
-            {selectedTrade.risk === null
-              ? <div className="risk-note"><CircleHelp size={16} /><span>No initial stop loss in source. R cannot be calculated.</span></div>
-              : <div className="risk-note">Risk from initial SL: {selectedTrade.risk.toFixed(2)} USD · R = net P&amp;L ÷ risk</div>}
-            <div className="detail-source"><span>Source</span><strong>Eightcap Trades Report</strong></div>
+            <div className="risk-note"><CircleHelp size={16} /><span>{selectedTrade.rSource === 'MANUAL' ? 'R entered manually.' : 'No R entered; this trade is excluded from R totals.'}</span></div>
+            {selectedTrade.r !== null && Math.abs(selectedTrade.r) > 5 && <div className="warning-text">Review: |R| is greater than 5. The value is unchanged.</div>}
+            <div className="detail-source"><span>Source</span><strong>{selectedTrade.source === 'MANUAL' ? 'Manual' : 'Eightcap Trades Report'}</strong></div>
             <div className="detail-actions">
               <button className="secondary-button" type="button" onClick={() => editTrade(selectedTrade)}>
-                {selectedTrade.source === 'IMPORT' ? 'Edit SL / risk' : 'Edit trade'}
+                {selectedTrade.source === 'IMPORT' ? 'Edit R' : 'Edit trade'}
               </button>
               <button className="detail-delete-button" type="button" onClick={() => { setTradeToDelete(selectedTrade); setSelectedTrade(null) }}>
                 {selectedTrade.source === 'IMPORT' ? 'Hide trade' : 'Delete trade'}

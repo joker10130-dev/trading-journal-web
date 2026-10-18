@@ -1,5 +1,5 @@
 export type TradeSource = 'IMPORT' | 'MANUAL'
-export type RiskSource = 'TRADINGVIEW' | 'MANUAL' | null
+export type RSource = 'MANUAL' | 'NONE'
 
 export type Trade = {
   id: string
@@ -14,10 +14,8 @@ export type Trade = {
   swaps: number
   commission: number
   pnl: number
-  risk: number | null
-  initialSlPrice: number | null
-  riskSource: RiskSource
   r: number | null
+  rSource: RSource
   opened: string | null
   closed: string
   closes: number
@@ -30,13 +28,12 @@ export function netPnl(profit: number, swaps: number, commission: number) {
   return profit + swaps + commission
 }
 
-export function riskFromStopLoss(profit: number, entry: number, exit: number, stopLoss: number) {
-  const priceDifference = Math.abs(exit - entry)
-  if (priceDifference === 0) return null
-  const valuePerPriceUnit = Math.abs(profit) / priceDifference
-  return valuePerPriceUnit * Math.abs(entry - stopLoss)
+export function parseManualR(value: string) {
+  if (!value.trim()) return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
 }
 
-export function rMultiple(pnl: number, risk: number | null) {
-  return risk !== null && risk > 0 ? pnl / risk : null
+export function rSourceFor(value: number | null): RSource {
+  return value === null ? 'NONE' : 'MANUAL'
 }

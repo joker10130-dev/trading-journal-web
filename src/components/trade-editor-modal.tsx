@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { X } from 'lucide-react'
-import { riskFromStopLoss, rMultiple, type Trade } from '../lib/trade'
+import { parseManualR, rSourceFor, type Trade } from '../lib/trade'
 
 type TradeEditorModalProps = {
   trade: Trade | null
@@ -8,9 +8,8 @@ type TradeEditorModalProps = {
   onSave: (trade: Trade) => void
 }
 
-type FieldName = 'symbol' | 'size' | 'opened' | 'closed' | 'entry' | 'exit' | 'pnl' | 'risk'
+type FieldName = 'symbol' | 'size' | 'opened' | 'closed' | 'entry' | 'exit' | 'pnl' | 'r'
 type FormErrors = Partial<Record<FieldName, string>>
-type RiskInput = 'RISK' | 'SL'
 
 type FormValues = {
   symbol: string
@@ -21,9 +20,7 @@ type FormValues = {
   entry: string
   exit: string
   pnl: string
-  stopLoss: string
-  risk: string
-  riskInput: RiskInput
+  r: string
   ticket: string
   tags: string
   notes: string
@@ -48,9 +45,7 @@ function initialForm(trade: Trade | null): FormValues {
     entry: trade ? String(trade.entry) : '',
     exit: trade ? String(trade.exit) : '',
     pnl: trade ? String(trade.pnl) : '',
-    stopLoss: trade?.initialSlPrice === null || trade?.initialSlPrice === undefined ? '' : String(trade.initialSlPrice),
-    risk: trade?.risk === null || trade?.risk === undefined ? '' : String(trade.risk),
-    riskInput: trade?.initialSlPrice !== null && trade?.initialSlPrice !== undefined ? 'SL' : 'RISK',
+    r: trade?.r === null || trade?.r === undefined ? '' : String(trade.r),
     ticket: trade?.ticket ?? '',
     tags: trade?.tags.join(', ') ?? '',
     notes: trade?.notes ?? '',
@@ -67,24 +62,12 @@ function TradeEditorModal({ trade, onClose, onSave }: TradeEditorModalProps) {
     entry: parseNumber(form.entry),
     exit: parseNumber(form.exit),
     pnl: parseNumber(form.pnl),
-    stopLoss: parseNumber(form.stopLoss),
-    risk: parseNumber(form.risk),
   }
-  const calculatedRisk = form.riskInput === 'SL' && Number.isFinite(numbers.stopLoss)
-    ? riskFromStopLoss(numbers.pnl, numbers.entry, numbers.exit, numbers.stopLoss)
-    : Number.isFinite(numbers.risk) && numbers.risk > 0 ? numbers.risk : null
-  const calculatedR = rMultiple(numbers.pnl, calculatedRisk)
-  const stopOnProfitSide = Number.isFinite(numbers.stopLoss) && Number.isFinite(numbers.entry) && (
-    form.side === 'LONG' ? numbers.stopLoss >= numbers.entry : numbers.stopLoss <= numbers.entry
-  )
+  const enteredR = parseManualR(form.r)
 
   function update<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setForm((current) => ({ ...current, [key]: value }))
-    setErrors((current) => ({
-      ...current,
-      [key]: undefined,
-      ...(['entry', 'exit', 'pnl', 'stopLoss', 'risk'].includes(key) ? { risk: undefined } : {}),
-    }))
+    setErrors((current) => ({ ...current, [key]: undefined }))
   }
 
   function save(event: FormEvent<HTMLFormElement>) {
@@ -100,31 +83,12 @@ function TradeEditorModal({ trade, onClose, onSave }: TradeEditorModalProps) {
       if (!Number.isFinite(numbers.exit) || numbers.exit <= 0) nextErrors.exit = 'Enter a valid exit price.'
       if (!Number.isFinite(numbers.pnl)) nextErrors.pnl = 'Enter the P&L in USD.'
     }
-
-    const selectedRisk = form.riskInput === 'SL' ? calculatedRisk : numbers.risk
-    if (form.riskInput === 'RISK' && form.risk && (selectedRisk === null || !(selectedRisk > 0) || !Number.isFinite(selectedRisk))) {
-      nextErrors.risk = 'Risk amount must be greater than 0.'
-    } else if (form.riskInput === 'SL' && form.stopLoss && calculatedRisk === null) {
-      nextErrors.risk = 'Can’t calculate risk from this stop loss. Enter risk amount instead.'
-    } else if (form.riskInput === 'SL' && form.stopLoss && numbers.stopLoss === numbers.entry) {
-      nextErrors.risk = 'Stop loss cannot equal entry price.'
-    }
+    if (form.r && enteredR === null) nextErrors.r = 'Enter a valid R value.'
     setErrors(nextErrors)
     if (Object.values(nextErrors).some(Boolean)) return
 
     const pnl = importedTrade ? importedTrade.pnl : numbers.pnl
-    const risk = form.riskInput === 'SL'
-      ? form.stopLoss ? calculatedRisk : locked && !form.risk ? importedTrade?.risk ?? null : null
-      : form.risk ? numbers.risk : locked && !form.risk ? importedTrade?.risk ?? null : null
-    const riskChanged = importedTrade ? (
-      form.riskInput !== (importedTrade.initialSlPrice === null ? 'RISK' : 'SL')
-      || form.risk !== String(importedTrade.risk ?? '')
-      || form.stopLoss !== (importedTrade.initialSlPrice === null ? '' : String(importedTrade.initialSlPrice))
-    ) : false
-    const nextRisk = importedTrade && !riskChanged ? importedTrade.risk : risk
-    const nextSl = importedTrade && !riskChanged
-      ? importedTrade.initialSlPrice
-      : form.riskInput === 'SL' && form.stopLoss ? numbers.stopLoss : null
+    const r = enteredR
 
     onSave({
       id: trade?.id ?? crypto.randomUUID(),
@@ -139,10 +103,8 @@ function TradeEditorModal({ trade, onClose, onSave }: TradeEditorModalProps) {
       swaps: importedTrade ? importedTrade.swaps : 0,
       commission: importedTrade ? importedTrade.commission : 0,
       pnl,
-      risk: nextRisk,
-      initialSlPrice: nextSl,
-      riskSource: nextRisk === null ? null : riskChanged || !locked ? 'MANUAL' : importedTrade.riskSource,
-      r: rMultiple(pnl, nextRisk),
+      r,
+      rSource: rSourceFor(r),
       opened: importedTrade ? importedTrade.opened : form.opened,
       closed: importedTrade ? importedTrade.closed : form.closed,
       closes: trade?.closes ?? 1,
@@ -158,7 +120,7 @@ function TradeEditorModal({ trade, onClose, onSave }: TradeEditorModalProps) {
         <button className="trade-modal-close" onClick={onClose} aria-label="Close" type="button"><X size={20} /></button>
         <h2 id="trade-editor-title">{trade ? 'Edit trade' : 'Add trade'}</h2>
         {!locked && <p className="trade-modal-subtitle">{trade ? 'Manual trade' : 'Enter a trade by hand, for example one that isn’t in a broker file.'}</p>}
-        {importedTrade && <div className="trade-lock-note">Imported from Eightcap (ticket {importedTrade.ticket}). Prices, size, time and P&amp;L come from the broker file and are locked. You can change the stop-loss or risk amount used for R.</div>}
+        {importedTrade && <div className="trade-lock-note">Imported from Eightcap (ticket {importedTrade.ticket}). Prices, size, time and P&amp;L come from the broker file and are locked. You can enter or edit R manually.</div>}
 
         <form className="trade-form" onSubmit={save} noValidate>
           <div className="trade-form-grid">
@@ -221,19 +183,16 @@ function TradeEditorModal({ trade, onClose, onSave }: TradeEditorModalProps) {
               {errors.pnl && <small>{errors.pnl}</small>}
             </label>
             <label className="trade-form-field">
-              <span>Stop-loss price <em>Optional</em></span>
-              <input type="number" step="any" inputMode="decimal" value={form.stopLoss} disabled={form.riskInput === 'RISK' && Boolean(form.risk)} onChange={(event) => { setForm((current) => ({ ...current, stopLoss: event.target.value, risk: '', riskInput: 'SL' })); setErrors((current) => ({ ...current, risk: undefined })) }} />
-            </label>
-            <label className="trade-form-field">
-              <span>or Risk amount, USD <em>Optional</em></span>
-              <input type="number" step="any" min="0" inputMode="decimal" value={form.risk} disabled={form.riskInput === 'SL' && Boolean(form.stopLoss)} onChange={(event) => { setForm((current) => ({ ...current, risk: event.target.value, stopLoss: '', riskInput: 'RISK' })); setErrors((current) => ({ ...current, risk: undefined })) }} />
-              {errors.risk && <small>{errors.risk}</small>}
+              <span>R multiple <em>Optional · entered manually</em></span>
+              <input type="number" step="any" inputMode="decimal" value={form.r} onChange={(event) => update('r', event.target.value)} />
+              {errors.r && <small>{errors.r}</small>}
             </label>
             <div className="trade-preview trade-form-full" aria-live="polite">
-              {calculatedRisk !== null
-                ? <>Risk {calculatedRisk.toFixed(2)} USD · R = <strong className={calculatedR === null ? '' : calculatedR >= 0 ? 'positive' : 'negative'}>{calculatedR === null ? '—' : `${calculatedR >= 0 ? '+' : ''}${calculatedR.toFixed(2)}R`}</strong></>
-                : <span>No SL or risk amount: R won’t be calculated (shown as —).</span>}
-              {stopOnProfitSide && <span className="trade-form-warning">This SL is on the profit side of the entry price.</span>}
+              {enteredR !== null
+                ? <>Entered R: <strong className={enteredR >= 0 ? 'positive' : 'negative'}>{`${enteredR >= 0 ? '+' : ''}${enteredR.toFixed(2)}R`}</strong></>
+                : form.r
+                  ? <span>Enter a valid R value.</span>
+                : <span>R is not entered and will be excluded from R totals.</span>}
             </div>
             {!locked && (
               <>
