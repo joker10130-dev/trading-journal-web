@@ -11,9 +11,11 @@ import {
   Upload,
   X,
 } from 'lucide-react'
+import AccountSetupScreen from './components/account-setup-screen'
 import AuthScreen from './components/auth-screen'
 import TradeEditorModal from './components/trade-editor-modal'
 import { AuthRequestError, requestSessionRefresh, requestSignOut, type AuthSession } from './lib/auth'
+import { listTradingAccounts, TradingAccountRequestError, type TradingAccount } from './lib/accounts'
 import { type Trade } from './lib/trade'
 import './App.css'
 
@@ -41,6 +43,10 @@ function App() {
   const [authSession, setAuthSession] = useState<AuthSession | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [authNotice, setAuthNotice] = useState<string | null>(null)
+  const [tradingAccounts, setTradingAccounts] = useState<TradingAccount[]>([])
+  const [accountsLoading, setAccountsLoading] = useState(true)
+  const [accountsError, setAccountsError] = useState('')
+  const [accountsRetry, setAccountsRetry] = useState(0)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const [toastMessage, setToastMessage] = useState('')
@@ -79,6 +85,31 @@ function App() {
       active = false
     }
   }, [])
+
+  useEffect(() => {
+    if (!authSession) return
+
+    let active = true
+    listTradingAccounts(authSession.accessToken)
+      .then((accounts) => {
+        if (active) setTradingAccounts(accounts)
+      })
+      .catch((error: unknown) => {
+        if (!active) return
+        if (error instanceof TradingAccountRequestError && error.status === 401) {
+          setAuthSession(null)
+          setAuthNotice('Your session expired. Please sign in again.')
+          return
+        }
+        setAccountsError('Unable to load your trading accounts. Please try again.')
+      })
+      .finally(() => {
+        if (active) setAccountsLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [authSession, accountsRetry])
 
   useEffect(() => {
     if (!showUserMenu) return
@@ -221,15 +252,18 @@ function App() {
   async function signOut() {
     setShowUserMenu(false)
     setToastMessage('Signing out…')
+    let signOutFailed = false
     try {
       await requestSignOut()
     } catch (error) {
       console.error('Sign-out request failed.', error)
-      setToastMessage(error instanceof Error ? `Sign-out failed: ${error.message}` : 'Sign-out failed.')
-      return
+      signOutFailed = true
     }
     setAuthSession(null)
-    setAuthNotice(null)
+    setAuthNotice(signOutFailed ? 'Sign-out could not be confirmed by the server. Please try again later.' : null)
+    setTradingAccounts([])
+    setAccountsError('')
+    setAccountsLoading(false)
     setSelectedTrade(null)
     setTradeEditor(null)
     setTradeToDelete(null)
@@ -308,9 +342,27 @@ function App() {
         : !authSession
         ? <AuthScreen
             notice={authNotice}
-            onAuthenticated={(session) => { setAuthSession(session); setAuthNotice(null) }}
+            onAuthenticated={(session) => { setAccountsLoading(true); setAuthSession(session); setAuthNotice(null) }}
           />
-        : <>
+        : accountsLoading
+          ? <main className="auth-screen" aria-busy="true"><p role="status">Loading your trading accounts…</p></main>
+          : accountsError
+            ? <main className="auth-screen">
+                <section className="auth-card" aria-labelledby="accounts-error-title">
+                  <h1 id="accounts-error-title">Could not load accounts</h1>
+                  <p className="auth-subtitle">{accountsError}</p>
+                  <button className="auth-submit" onClick={() => { setAccountsLoading(true); setAccountsError(''); setAccountsRetry((current) => current + 1) }} type="button">Retry</button>
+                </section>
+              </main>
+            : tradingAccounts.length === 0
+              ? <AccountSetupScreen
+                  accessToken={authSession.accessToken}
+                  onCreated={(account) => { setTradingAccounts([account]); setAccountsError('') }}
+                  onAuthenticationRequired={() => {
+                    setAuthSession(null)
+                    setAuthNotice('Your session expired. Please sign in again.')
+                  }}                />
+              : <>
       <header className="app-header">
         <a className="brand" href="#dashboard">Trading Journal</a>
         <nav className="period-tabs" aria-label="Date range">
