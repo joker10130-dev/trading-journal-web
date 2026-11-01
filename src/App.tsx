@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import AuthScreen from './components/auth-screen'
 import TradeEditorModal from './components/trade-editor-modal'
+import { AuthRequestError, requestSessionRefresh, requestSignOut, type AuthSession } from './lib/auth'
 import { type Trade } from './lib/trade'
 import './App.css'
 
@@ -37,7 +38,9 @@ const tradeDay = (trade: Trade) => trade.closed.slice(0, 10)
 const valueClass = (value: number) => value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral'
 
 function App() {
-  const [authenticatedEmail, setAuthenticatedEmail] = useState<string | null>(null)
+  const [authSession, setAuthSession] = useState<AuthSession | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [authNotice, setAuthNotice] = useState<string | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const [toastMessage, setToastMessage] = useState('')
@@ -54,6 +57,28 @@ function App() {
   const [showReminder, setShowReminder] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [files, setFiles] = useState<File[]>([])
+
+  useEffect(() => {
+    let active = true
+    requestSessionRefresh()
+      .then((session) => {
+        if (active) setAuthSession(session)
+      })
+      .catch((error: unknown) => {
+        if (!active) return
+        if (error instanceof AuthRequestError && error.status === 401) {
+          setAuthSession(null)
+          return
+        }
+        setAuthNotice('Unable to restore your session. Please sign in again.')
+      })
+      .finally(() => {
+        if (active) setAuthLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   useEffect(() => {
     if (!showUserMenu) return
@@ -193,9 +218,18 @@ function App() {
     setSelectedDay(null)
   }
 
-  function signOut() {
+  async function signOut() {
     setShowUserMenu(false)
-    setAuthenticatedEmail(null)
+    setToastMessage('Signing out…')
+    try {
+      await requestSignOut()
+    } catch (error) {
+      console.error('Sign-out request failed.', error)
+      setToastMessage(error instanceof Error ? `Sign-out failed: ${error.message}` : 'Sign-out failed.')
+      return
+    }
+    setAuthSession(null)
+    setAuthNotice(null)
     setSelectedTrade(null)
     setTradeEditor(null)
     setTradeToDelete(null)
@@ -269,8 +303,13 @@ function App() {
 
   return (
     <div className="app-shell">
-      {!authenticatedEmail
-        ? <AuthScreen onAuthenticated={setAuthenticatedEmail} />
+      {authLoading
+        ? <main className="auth-screen" aria-busy="true"><p role="status">Checking your session…</p></main>
+        : !authSession
+        ? <AuthScreen
+            notice={authNotice}
+            onAuthenticated={(session) => { setAuthSession(session); setAuthNotice(null) }}
+          />
         : <>
       <header className="app-header">
         <a className="brand" href="#dashboard">Trading Journal</a>
@@ -299,13 +338,13 @@ function App() {
             aria-label="Account menu"
             onClick={() => setShowUserMenu((open) => !open)}
           >
-            <span className="account-avatar" aria-hidden="true">{authenticatedEmail.split('@')[0].slice(0, 2).toUpperCase()}</span>
+            <span className="account-avatar" aria-hidden="true">{authSession.email.split('@')[0].slice(0, 2).toUpperCase()}</span>
           </button>
           {showUserMenu && (
             <div className="account-dropdown" role="menu">
               <div className="account-menu-heading">
                 <strong>Trader</strong>
-                <span>{authenticatedEmail}</span>
+                <span>{authSession.email}</span>
               </div>
               <button className="account-menu-item account-signout" type="button" role="menuitem" onClick={signOut}>
                 Sign out
