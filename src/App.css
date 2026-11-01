@@ -1673,6 +1673,14 @@
   color: #ff9ba4;
   font-size: calc(10px * var(--font-scale));
 }
+.auth-success {
+  border: 1px solid #256849;
+  border-radius: 8px;
+  background: #162a24;
+  padding: 9px 11px;
+  color: #8be0b8;
+  font-size: calc(10px * var(--font-scale));
+}
 
 .auth-submit {
   display: inline-flex;

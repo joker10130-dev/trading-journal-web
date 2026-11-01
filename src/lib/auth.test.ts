@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { requestSessionRefresh, requestSignIn, requestSignOut, requestSignUp } from './auth'
+import { confirmPasswordReset, requestPasswordReset, requestSessionRefresh, requestSignIn, requestSignOut, requestSignUp } from './auth'
 
 describe('authentication requests', () => {
   afterEach(() => {
@@ -75,6 +75,34 @@ describe('authentication requests', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/sign-out', {
       method: 'POST',
       credentials: 'include',
+    })
+  })
+
+  it('requests a password reset without revealing whether the email exists', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ message: 'If an account exists for this email, password-reset instructions will be sent.' }, { status: 202 }),
+    )
+
+    await expect(requestPasswordReset(' Trader@Example.com ')).resolves.toBe(
+      'If an account exists for this email, password-reset instructions will be sent.',
+    )
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/password-reset/request', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'trader@example.com' }),
+    })
+  })
+
+  it('confirms a password reset with the one-time token', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }))
+
+    await expect(confirmPasswordReset('one-time-token', 'ten-character-password')).resolves.toBeUndefined()
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/password-reset/confirm', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'one-time-token', newPassword: 'ten-character-password' }),
     })
   })
 

@@ -104,3 +104,29 @@ export async function requestSignOut() {
     throw new AuthRequestError(response.status)
   }
 }
+
+export async function requestPasswordReset(email: string): Promise<string> {
+  const response = await fetch('/api/v1/auth/password-reset/request', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email.trim().toLowerCase() }),
+  })
+  if (!response.ok) throw new AuthRequestError(response.status)
+
+  const payload: unknown = await response.json()
+  if (typeof payload !== 'object' || payload === null || typeof (payload as Record<string, unknown>).message !== 'string') {
+    throw new Error('The password-reset response was invalid.')
+  }
+  return (payload as { message: string }).message
+}
+
+export async function confirmPasswordReset(token: string, newPassword: string): Promise<void> {
+  const response = await fetch('/api/v1/auth/password-reset/confirm', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, newPassword }),
+  })
+  if (!response.ok) throw new AuthRequestError(response.status)
+}
