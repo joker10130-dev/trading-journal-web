@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { LogIn, TrendingUp } from 'lucide-react'
+import { AuthRequestError, requestSignIn, requestSignUp, type AuthSession } from '../lib/auth'
 
 type AuthScreenProps = {
-  onAuthenticated: (email: string) => void
+  onAuthenticated: (session: AuthSession) => void
+  notice?: string | null
 }
 
 type AuthView = 'login' | 'signup'
@@ -16,12 +18,13 @@ function emailError(email: string) {
   return ''
 }
 
-function AuthScreen({ onAuthenticated }: AuthScreenProps) {
+function AuthScreen({ onAuthenticated, notice }: AuthScreenProps) {
   const [view, setView] = useState<AuthView>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [errors, setErrors] = useState<AuthErrors>({})
+  const [submitting, setSubmitting] = useState(false)
 
   function switchView(nextView: AuthView) {
     setView(nextView)
@@ -30,26 +33,35 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     setErrors({})
   }
 
-  function signIn(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const nextErrors: AuthErrors = {}
     const invalidEmail = emailError(email)
     if (invalidEmail) nextErrors.email = invalidEmail
     if (!password) nextErrors.password = 'Enter your password.'
-    if (password === 'wrong') nextErrors.form = 'Email or password is incorrect.'
+    if (view === 'signup' && password.length < 8) nextErrors.password = 'Use at least 8 characters.'
+    if (view === 'signup' && confirmPassword !== password) nextErrors.confirmPassword = 'Passwords do not match.'
     setErrors(nextErrors)
-    if (Object.keys(nextErrors).length === 0) onAuthenticated(email.trim())
-  }
+    if (Object.keys(nextErrors).length > 0) return
 
-  function createAccount(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const nextErrors: AuthErrors = {}
-    const invalidEmail = emailError(email)
-    if (invalidEmail) nextErrors.email = invalidEmail
-    if (password.length < 10) nextErrors.password = 'Use at least 10 characters.'
-    if (confirmPassword !== password) nextErrors.confirmPassword = 'Passwords do not match.'
-    setErrors(nextErrors)
-    if (Object.keys(nextErrors).length === 0) onAuthenticated(email.trim())
+    setSubmitting(true)
+    try {
+      const session = view === 'login'
+        ? await requestSignIn(email, password)
+        : await requestSignUp(email, password)
+      onAuthenticated(session)
+    } catch (error) {
+      const genericFailure = view === 'login'
+        ? error instanceof AuthRequestError && error.status >= 400 && error.status < 500
+          ? 'Email or password is incorrect.'
+          : 'Unable to sign in right now. Please try again.'
+        : error instanceof AuthRequestError && error.status >= 400 && error.status < 500
+          ? 'Unable to create an account with these details.'
+          : 'Unable to create an account right now. Please try again.'
+      setErrors((current) => ({ ...current, form: genericFailure }))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -68,7 +80,8 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
               : 'Create your workspace and start reviewing your trades.'}
           </p>
 
-          <form className="auth-form" noValidate onSubmit={view === 'login' ? signIn : createAccount}>
+          <form className="auth-form" noValidate onSubmit={submit}>
+            {notice && <div className="auth-alert" role="alert">{notice}</div>}
             {errors.form && <div className="auth-alert" role="alert">{errors.form}</div>}
             <div className={`auth-field ${errors.email ? 'auth-field-error' : ''}`}>
               <label htmlFor="auth-email">Email</label>
@@ -95,7 +108,7 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                 aria-describedby={errors.password ? 'auth-password-error' : view === 'signup' ? 'auth-password-hint' : undefined}
                 onChange={(event) => { setPassword(event.target.value); setErrors((current) => ({ ...current, password: undefined, form: undefined })) }}
               />
-              {view === 'signup' && <span className="auth-hint" id="auth-password-hint">At least 10 characters.</span>}
+              {view === 'signup' && <span className="auth-hint" id="auth-password-hint">At least 8 characters.</span>}
               {errors.password && <span className="auth-error" id="auth-password-error">{errors.password}</span>}
             </div>
 
@@ -115,23 +128,20 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
               </div>
             )}
 
-            <button className="auth-submit" type="submit">
+            <button className="auth-submit" type="submit" disabled={submitting}>
               {view === 'login' && <LogIn size={18} aria-hidden="true" />}
-              {view === 'login' ? 'Sign in' : 'Create account'}
+              {submitting ? 'Please wait…' : view === 'login' ? 'Sign in' : 'Create account'}
             </button>
           </form>
 
           <p className="auth-switch">
             {view === 'login' ? 'New to Trading Journal?' : 'Already have an account?'}{' '}
-            <button className="auth-link" type="button" onClick={() => switchView(view === 'login' ? 'signup' : 'login')}>
+            <button className="auth-link" type="button" disabled={submitting} onClick={() => switchView(view === 'login' ? 'signup' : 'login')}>
               {view === 'login' ? 'Create an account' : 'Sign in'}
             </button>
           </p>
         </section>
         <p className="auth-privacy">Your trade history stays yours. We never place trades or make investment decisions for you.</p>
-        <p className="auth-demo-note">
-          Demo only: authentication is not connected to an API. Use any valid email and password to sign in; use “wrong” to test the error state.
-        </p>
       </div>
     </main>
   )
