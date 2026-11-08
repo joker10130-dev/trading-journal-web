@@ -7,6 +7,7 @@ export type Trade = {
   source: TradeSource
   symbol: string
   side: 'LONG' | 'SHORT'
+  status?: string
   size: number
   entry: number
   exit: number
@@ -17,11 +18,23 @@ export type Trade = {
   r: number | null
   rSource: RSource
   opened: string | null
-  closed: string
+  closed: string | null
   closes: number
   comment: string
   tags: string[]
   notes: string
+  closeDetails?: {
+    id: string
+    source: string
+    closedAt: string | null
+    volume: number
+    closePrice: number
+    grossPnl: number
+    swaps: number
+    commission: number
+    netPnl: number
+    r: number | null
+  }[]
 }
 
 export function netPnl(profit: number, swaps: number, commission: number) {

@@ -4,11 +4,12 @@ import { parseManualR, rSourceFor, type Trade } from '../lib/trade'
 
 type TradeEditorModalProps = {
   trade: Trade | null
+  accountLabel: string
   onClose: () => void
   onSave: (trade: Trade) => void
 }
 
-type FieldName = 'symbol' | 'size' | 'opened' | 'closed' | 'entry' | 'exit' | 'pnl' | 'r'
+type FieldName = 'symbol' | 'size' | 'opened' | 'closed' | 'entry' | 'exit' | 'profit' | 'swaps' | 'commission' | 'r'
 type FormErrors = Partial<Record<FieldName, string>>
 
 type FormValues = {
@@ -19,15 +20,15 @@ type FormValues = {
   closed: string
   entry: string
   exit: string
-  pnl: string
+  profit: string
+  swaps: string
+  commission: string
   r: string
   ticket: string
-  tags: string
-  notes: string
 }
 
-const accountLabel = 'Eightcap · xxxxxxxx (USD)'
 const parseNumber = (value: string) => value === '' ? Number.NaN : Number(value)
+const valueClass = (value: number) => value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral'
 
 function localDateTime(date: Date) {
   const offset = date.getTimezoneOffset() * 60_000
@@ -41,18 +42,18 @@ function initialForm(trade: Trade | null): FormValues {
     side: trade?.side ?? 'LONG',
     size: trade ? String(trade.size) : '',
     opened: trade?.opened?.slice(0, 16) ?? localDateTime(new Date(now.getTime() - 60 * 60 * 1000)),
-    closed: trade?.closed.slice(0, 16) ?? localDateTime(now),
+    closed: trade?.closed?.slice(0, 16) ?? localDateTime(now),
     entry: trade ? String(trade.entry) : '',
     exit: trade ? String(trade.exit) : '',
-    pnl: trade ? String(trade.pnl) : '',
+    profit: trade ? String(trade.profit) : '',
+    swaps: trade ? String(trade.swaps) : '0',
+    commission: trade ? String(trade.commission) : '0',
     r: trade?.r === null || trade?.r === undefined ? '' : String(trade.r),
     ticket: trade?.ticket ?? '',
-    tags: trade?.tags.join(', ') ?? '',
-    notes: trade?.notes ?? '',
   }
 }
 
-function TradeEditorModal({ trade, onClose, onSave }: TradeEditorModalProps) {
+function TradeEditorModal({ trade, accountLabel, onClose, onSave }: TradeEditorModalProps) {
   const [form, setForm] = useState(() => initialForm(trade))
   const [errors, setErrors] = useState<FormErrors>({})
   const importedTrade = trade?.source === 'IMPORT' ? trade : null
@@ -61,7 +62,9 @@ function TradeEditorModal({ trade, onClose, onSave }: TradeEditorModalProps) {
     size: parseNumber(form.size),
     entry: parseNumber(form.entry),
     exit: parseNumber(form.exit),
-    pnl: parseNumber(form.pnl),
+    profit: parseNumber(form.profit),
+    swaps: parseNumber(form.swaps),
+    commission: parseNumber(form.commission),
   }
   const enteredR = parseManualR(form.r)
 
@@ -81,13 +84,18 @@ function TradeEditorModal({ trade, onClose, onSave }: TradeEditorModalProps) {
       else if (form.opened && form.closed < form.opened) nextErrors.closed = 'Close time cannot be before open time.'
       if (!Number.isFinite(numbers.entry) || numbers.entry <= 0) nextErrors.entry = 'Enter a valid entry price.'
       if (!Number.isFinite(numbers.exit) || numbers.exit <= 0) nextErrors.exit = 'Enter a valid exit price.'
-      if (!Number.isFinite(numbers.pnl)) nextErrors.pnl = 'Enter the P&L in USD.'
+      if (!Number.isFinite(numbers.profit)) nextErrors.profit = 'Enter gross profit in USD.'
+      if (!Number.isFinite(numbers.swaps)) nextErrors.swaps = 'Enter a valid swap amount.'
+      if (!Number.isFinite(numbers.commission)) nextErrors.commission = 'Enter a valid commission.'
     }
     if (form.r && enteredR === null) nextErrors.r = 'Enter a valid R value.'
     setErrors(nextErrors)
     if (Object.values(nextErrors).some(Boolean)) return
 
-    const pnl = importedTrade ? importedTrade.pnl : numbers.pnl
+    const profit = importedTrade ? importedTrade.profit : numbers.profit
+    const swaps = importedTrade ? importedTrade.swaps : numbers.swaps
+    const commission = importedTrade ? importedTrade.commission : numbers.commission
+    const pnl = importedTrade ? importedTrade.pnl : profit + swaps + commission
     const r = enteredR
 
     onSave({
@@ -99,9 +107,9 @@ function TradeEditorModal({ trade, onClose, onSave }: TradeEditorModalProps) {
       size: importedTrade ? importedTrade.size : numbers.size,
       entry: importedTrade ? importedTrade.entry : numbers.entry,
       exit: importedTrade ? importedTrade.exit : numbers.exit,
-      profit: importedTrade ? importedTrade.profit : pnl,
-      swaps: importedTrade ? importedTrade.swaps : 0,
-      commission: importedTrade ? importedTrade.commission : 0,
+      profit,
+      swaps,
+      commission,
       pnl,
       r,
       rSource: rSourceFor(r),
@@ -109,8 +117,8 @@ function TradeEditorModal({ trade, onClose, onSave }: TradeEditorModalProps) {
       closed: importedTrade ? importedTrade.closed : form.closed,
       closes: trade?.closes ?? 1,
       comment: trade?.comment ?? 'Manual entry',
-      tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
-      notes: form.notes.trim(),
+      tags: trade?.tags ?? [],
+      notes: trade?.notes ?? '',
     })
   }
 
@@ -177,11 +185,31 @@ function TradeEditorModal({ trade, onClose, onSave }: TradeEditorModalProps) {
               {errors.exit && <small>{errors.exit}</small>}
             </label>
             <label className="trade-form-field trade-form-full">
-              <span>P&amp;L (USD, after swap/commission)</span>
-              <input type="number" step="any" inputMode="decimal" value={form.pnl} disabled={locked} onChange={(event) => update('pnl', event.target.value)} />
-              <span className="trade-field-hint">{form.pnl ? 'Entered manually. Include swap and commission.' : 'Enter net closed P&L.'}</span>
-              {errors.pnl && <small>{errors.pnl}</small>}
+              <span>Gross profit (USD)</span>
+              <input type="number" step="any" inputMode="decimal" value={form.profit} disabled={locked} onChange={(event) => update('profit', event.target.value)} />
+              {errors.profit && <small>{errors.profit}</small>}
             </label>
+            {!locked && (
+              <>
+                <label className="trade-form-field">
+                  <span>Swap (USD)</span>
+                  <input type="number" step="any" inputMode="decimal" value={form.swaps} onChange={(event) => update('swaps', event.target.value)} />
+                  {errors.swaps && <small>{errors.swaps}</small>}
+                </label>
+                <label className="trade-form-field">
+                  <span>Commission (USD)</span>
+                  <input type="number" step="any" inputMode="decimal" value={form.commission} onChange={(event) => update('commission', event.target.value)} />
+                  {errors.commission && <small>{errors.commission}</small>}
+                </label>
+                <div className="trade-preview trade-form-full" aria-live="polite">
+                  Net P&amp;L: <strong className={valueClass(numbers.profit + numbers.swaps + numbers.commission)}>
+                    {Number.isFinite(numbers.profit + numbers.swaps + numbers.commission)
+                      ? `${(numbers.profit + numbers.swaps + numbers.commission).toFixed(2)} USD`
+                      : 'Enter valid amounts'}
+                  </strong>
+                </div>
+              </>
+            )}
             <label className="trade-form-field">
               <span>R multiple <em>Optional · entered manually</em></span>
               <input type="number" step="any" inputMode="decimal" value={form.r} onChange={(event) => update('r', event.target.value)} />
@@ -199,26 +227,6 @@ function TradeEditorModal({ trade, onClose, onSave }: TradeEditorModalProps) {
                 <label className="trade-form-field">
                   <span>Broker ticket <em>Optional</em></span>
                   <input value={form.ticket} onChange={(event) => update('ticket', event.target.value)} />
-                </label>
-                <label className="trade-form-field">
-                  <span>Tags <em>Optional, comma-separated</em></span>
-                  <input value={form.tags} onChange={(event) => update('tags', event.target.value)} />
-                </label>
-                <label className="trade-form-field trade-form-full">
-                  <span>Notes <em>Optional</em></span>
-                  <textarea rows={2} value={form.notes} onChange={(event) => update('notes', event.target.value)} />
-                </label>
-              </>
-            )}
-            {locked && (
-              <>
-                <label className="trade-form-field trade-form-full">
-                  <span>Tags <em>Optional, comma-separated</em></span>
-                  <input value={form.tags} onChange={(event) => update('tags', event.target.value)} />
-                </label>
-                <label className="trade-form-field trade-form-full">
-                  <span>Notes <em>Optional</em></span>
-                  <textarea rows={2} value={form.notes} onChange={(event) => update('notes', event.target.value)} />
                 </label>
               </>
             )}

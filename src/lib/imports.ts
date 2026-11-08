@@ -24,6 +24,8 @@ export type ImportPreview = {
   cashRows: number
   errorRows: number
   loginMismatch?: boolean
+  possibleManualTradeDuplicates?: number
+  deletedTradeMatches?: number
   warnings?: ImportWarning[]
 }
 
@@ -117,6 +119,7 @@ function isImportPreview(value: unknown): value is ImportPreview {
   const optionalNumbers = [
     'newTrades', 'existingTrades', 'newTradeCloses', 'alreadyImportedTradeCloses',
     'newCashTransactions', 'alreadyImportedCashTransactions', 'newOrders', 'alreadyImportedOrders',
+    'possibleManualTradeDuplicates', 'deletedTradeMatches',
   ]
   if (optionalNumbers.some((key) => value[key] !== undefined && !isNonNegativeInteger(value[key]))) {
     return false
