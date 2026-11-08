@@ -4,6 +4,7 @@ import AuthScreen from './components/auth-screen'
 import DashboardScreen from './components/dashboard-screen'
 import ImportDialog from './components/import-dialog'
 import TradeManagementScreen from './components/trade-management-screen'
+import TagManagementScreen from './components/tag-management-screen'
 import { AuthRequestError, requestSessionRefresh, requestSignOut, type AuthSession } from './lib/auth'
 import { listTradingAccounts, TradingAccountRequestError, type TradingAccount } from './lib/accounts'
 import './App.css'
@@ -19,6 +20,7 @@ function App() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [showTradeList, setShowTradeList] = useState(false)
+  const [showTagManagement, setShowTagManagement] = useState(false)
   const [dashboardRefresh, setDashboardRefresh] = useState(0)
   const userMenuRef = useRef<HTMLDivElement>(null)
 
@@ -110,6 +112,7 @@ function App() {
     setAccountsLoading(false)
     setShowImport(false)
     setShowTradeList(false)
+    setShowTagManagement(false)
   }
 
   return (
@@ -159,18 +162,25 @@ function App() {
                       <a className="brand" href="#dashboard">Trading Journal</a>
                       <nav className="main-navigation" aria-label="Main navigation">
                         <button
-                          aria-current={showTradeList ? undefined : 'page'}
-                          onClick={() => setShowTradeList(false)}
+                          aria-current={!showTradeList && !showTagManagement ? 'page' : undefined}
+                          onClick={() => { setShowTradeList(false); setShowTagManagement(false) }}
                           type="button"
                         >
                           Dashboard
                         </button>
                         <button
                           aria-current={showTradeList ? 'page' : undefined}
-                          onClick={() => setShowTradeList(true)}
+                          onClick={() => { setShowTradeList(true); setShowTagManagement(false) }}
                           type="button"
                         >
                           Trades
+                        </button>
+                        <button
+                          aria-current={showTagManagement ? 'page' : undefined}
+                          onClick={() => { setShowTradeList(false); setShowTagManagement(true) }}
+                          type="button"
+                        >
+                          Tags
                         </button>
                       </nav>
                       <button className="trade-add-button" onClick={() => setShowImport(true)} type="button">
@@ -208,13 +218,18 @@ function App() {
                       </div>
                     </header>
 
-                    {showTradeList
-                      ? <TradeManagementScreen
-                          accounts={tradingAccounts}
+                    {showTagManagement
+                      ? <TagManagementScreen
                           accessToken={authSession.accessToken}
                           onAuthenticationRequired={requireAuthentication}
                         />
-                      : <DashboardScreen
+                      : showTradeList
+                        ? <TradeManagementScreen
+                          accounts={tradingAccounts}
+                          accessToken={authSession.accessToken}
+                          onAuthenticationRequired={requireAuthentication}
+                          />
+                        : <DashboardScreen
                           accounts={tradingAccounts}
                           accessToken={authSession.accessToken}
                           refreshKey={dashboardRefresh}
