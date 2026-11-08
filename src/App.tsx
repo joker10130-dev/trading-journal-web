@@ -3,19 +3,19 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleHelp,
-  FileSpreadsheet,
   Pencil,
   Plus,
   RotateCcw,
   Trash2,
-  Upload,
   X,
 } from 'lucide-react'
 import AccountSetupScreen from './components/account-setup-screen'
 import AuthScreen from './components/auth-screen'
+import ImportDialog from './components/import-dialog'
 import TradeEditorModal from './components/trade-editor-modal'
 import { AuthRequestError, requestSessionRefresh, requestSignOut, type AuthSession } from './lib/auth'
 import { listTradingAccounts, TradingAccountRequestError, type TradingAccount } from './lib/accounts'
+import type { ImportResult } from './lib/imports'
 import { type Trade } from './lib/trade'
 import './App.css'
 
@@ -62,7 +62,6 @@ function App() {
   const [tradeToDelete, setTradeToDelete] = useState<Trade | null>(null)
   const [showReminder, setShowReminder] = useState(false)
   const [showImport, setShowImport] = useState(false)
-  const [files, setFiles] = useState<File[]>([])
 
   useEffect(() => {
     let active = true
@@ -272,7 +271,6 @@ function App() {
     setShowDeletedTrades(false)
     setShowImport(false)
     setShowReminder(false)
-    setFiles([])
     setToastMessage('')
   }
 
@@ -323,14 +321,6 @@ function App() {
     nextMonday.setDate(nextMonday.getDate() + ((8 - nextMonday.getDay()) % 7 || 7))
     localStorage.setItem('journal-reminder-snoozed-until', nextMonday.toLocaleDateString('en-CA'))
     setShowReminder(false)
-  }
-
-  function addFiles(fileList: FileList | null) {
-    if (!fileList) return
-    setFiles((current) => [
-      ...current,
-      ...Array.from(fileList).filter((file) => !current.some((item) => item.name === file.name && item.size === file.size)),
-    ])
   }
 
   const shortMonth = month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -425,7 +415,7 @@ function App() {
       {showReminder && (
         <div className="reminder-banner">
           <span>Account <strong>Eightcap · xxxxxxxx</strong> has not been imported for 9 days. Older data may drop out of TradingView’s 199-row window.</span>
-          <button onClick={() => { setFiles([]); setShowImport(true) }} type="button">Import now</button>
+          <button onClick={() => setShowImport(true)} type="button">Import now</button>
           <button className="snooze-button" onClick={snoozeReminder} type="button">Remind me next Monday</button>
         </div>
       )}
@@ -607,20 +597,22 @@ function App() {
       {toastMessage && <div className="trade-toast" role="status">{toastMessage}</div>}
 
       {showImport && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowImport(false) }}>
-          <section className="import-modal" role="dialog" aria-modal="true" aria-labelledby="import-title">
-            <div className="modal-heading"><div><div className="metric-label">ADD TRADE HISTORY</div><h2 id="import-title">Import files</h2></div><button className="close-button" onClick={() => setShowImport(false)} aria-label="Close import dialog" type="button"><X size={18} /></button></div>
-            <p className="modal-description">Choose TradingView Order History or an Eightcap Trades Report. Multiple monthly reports can be selected together.</p>
-            <div className="import-tip"><FileSpreadsheet size={17} /><p><strong>Eightcap tip</strong><span>Monthly exports help avoid repeated rows in longer reports.</span></p></div>
-            <label className="upload-zone">
-              <input type="file" accept=".csv,.xlsx" multiple onChange={(event) => { addFiles(event.target.files); event.currentTarget.value = '' }} />
-              <Upload size={21} /><strong>Choose CSV or XLSX files</strong><span>TradingView Order History · Eightcap Trades Report</span>
-            </label>
-            {files.length > 0 && <div className="selected-files">{files.map((file) => <div key={`${file.name}-${file.size}`}><FileSpreadsheet size={15} /><span>{file.name}<small>{(file.size / 1024).toFixed(0)} KB</small></span><button onClick={() => setFiles((current) => current.filter((item) => item !== file))} aria-label={`Remove ${file.name}`} type="button"><X size={14} /></button></div>)}</div>}
-            <p className="demo-notice">Import preview and saving need the Spring Boot API. Files stay in this browser and are not uploaded.</p>
-            <div className="modal-footer"><button className="secondary-button" onClick={() => setShowImport(false)} type="button">Close</button><button className="confirm-button" disabled type="button">Preview import · API needed</button></div>
-          </section>
-        </div>
+        <ImportDialog
+          accounts={tradingAccounts}
+          accessToken={authSession.accessToken}
+          onClose={() => setShowImport(false)}
+          onAuthenticationRequired={() => {
+            setAuthSession(null)
+            setAuthNotice('Your session expired. Please sign in again.')
+            setShowImport(false)
+          }}
+          onImported={(result: ImportResult) => {
+            const importedRows = (result.importedTradeCloses ?? 0)
+              + (result.importedCashTransactions ?? 0)
+              + (result.importedOrders ?? result.newTrades ?? 0)
+            setToastMessage(`Import saved · ${importedRows} new items`)
+          }}
+        />
       )}
 
       {selectedTrade && (
