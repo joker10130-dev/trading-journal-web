@@ -2082,3 +2082,107 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+.dashboard-filters {
+  flex-wrap: wrap;
+}
+
+.dashboard-period-tabs {
+  margin-left: auto;
+}
+
+.dashboard-period-tabs .period-tab:disabled {
+  cursor: pointer;
+  opacity: 1;
+}
+
+.dashboard-range-label {
+  margin-bottom: -5px;
+  color: var(--muted);
+  font-size: calc(9px * var(--font-scale));
+}
+
+.calendar-range {
+  color: var(--muted);
+  font-size: calc(8px * var(--font-scale));
+  font-weight: 500;
+}
+
+.dashboard-calendar-scroll,
+.dashboard-week-list {
+  max-height: 65vh;
+  overflow: auto;
+  scrollbar-color: #465475 transparent;
+  scrollbar-width: thin;
+}
+
+.dashboard-calendar-scroll {
+  margin-top: 10px;
+}
+
+.dashboard-calendar-scroll .calendar-grid {
+  margin-top: 0;
+}
+
+.dashboard-calendar-scroll .calendar-day[role='gridcell'] {
+  cursor: default;
+}
+
+.dashboard-calendar-scroll .calendar-day[role='gridcell']:hover {
+  border-color: #263149;
+}
+
+.dashboard-calendar-scroll .calendar-day.day-traded:hover {
+  border-color: #2b7a58;
+}
+
+.dashboard-calendar-scroll .calendar-day.day-traded.day-loss:hover {
+  border-color: #7a2f3a;
+}
+
+.dashboard-week-list {
+  display: grid;
+  gap: 7px;
+}
+
+.dashboard-status,
+.dashboard-error {
+  margin: 14px 22px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 10px 12px;
+  color: var(--muted);
+  font-size: calc(10px * var(--font-scale));
+}
+
+.dashboard-error {
+  border-color: #7d3434;
+  background: #311d24;
+  color: #ffb1b1;
+}
+
+@media (max-width: 900px) {
+  .dashboard-period-tabs {
+    min-width: 0;
+    flex-basis: 100%;
+    order: 4;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .dashboard-status,
+  .dashboard-error {
+    margin: 10px 10px 0;
+  }
+
+  .dashboard-period-tabs {
+    order: 5;
+    flex: 1 0 100%;
+  }
+
+  .dashboard-range-label {
+    font-size: calc(8px * var(--font-scale));
+  }
+}
