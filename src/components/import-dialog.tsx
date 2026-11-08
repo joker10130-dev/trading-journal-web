@@ -39,6 +39,12 @@ function previewCounts(preview: ImportPreview) {
   if (preview.alreadyImportedOrders !== undefined) {
     counts.push(['Already imported orders', preview.alreadyImportedOrders])
   }
+  if (preview.possibleManualTradeDuplicates !== undefined) {
+    counts.push(['Possible manual duplicates', preview.possibleManualTradeDuplicates])
+  }
+  if (preview.deletedTradeMatches !== undefined) {
+    counts.push(['Deleted trades matched', preview.deletedTradeMatches])
+  }
   return counts
 }
 

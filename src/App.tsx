@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
@@ -13,6 +13,7 @@ import AccountSetupScreen from './components/account-setup-screen'
 import AuthScreen from './components/auth-screen'
 import ImportDialog from './components/import-dialog'
 import TradeEditorModal from './components/trade-editor-modal'
+import TradeManagementScreen from './components/trade-management-screen'
 import { AuthRequestError, requestSessionRefresh, requestSignOut, type AuthSession } from './lib/auth'
 import { listTradingAccounts, TradingAccountRequestError, type TradingAccount } from './lib/accounts'
 import type { ImportResult } from './lib/imports'
@@ -36,7 +37,7 @@ const periods = ['This Month', 'Last Month', 'Last Quarter', 'Last Year', 'Etern
 const fmtMoney = (value: number, digits = 2) =>
   `${value > 0 ? '+' : ''}${value.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })}`
 const fmtR = (value: number, digits = 2) => `${value > 0 ? '+' : ''}${value.toFixed(digits)}R`
-const tradeDay = (trade: Trade) => trade.closed.slice(0, 10)
+const tradeDay = (trade: Trade) => trade.closed?.slice(0, 10) ?? ''
 const valueClass = (value: number) => value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral'
 
 function App() {
@@ -62,6 +63,12 @@ function App() {
   const [tradeToDelete, setTradeToDelete] = useState<Trade | null>(null)
   const [showReminder, setShowReminder] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const [showTradeList, setShowTradeList] = useState(false)
+
+  const requireAuthentication = useCallback(() => {
+    setAuthSession(null)
+    setAuthNotice('Your session expired. Please sign in again.')
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -132,15 +139,15 @@ function App() {
 
   const monthKey = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`
   const monthTrades = useMemo(
-    () => tradeRows.filter((trade) => accountEnabled && trade.closed.startsWith(monthKey) && symbols.includes(trade.symbol)),
+    () => tradeRows.filter((trade) => accountEnabled && trade.closed?.startsWith(monthKey) && symbols.includes(trade.symbol)),
     [accountEnabled, monthKey, symbols, tradeRows],
   )
   const visibleTrades = useMemo(
     () => (showDeletedTrades
-      ? deletedTrades.filter((trade) => accountEnabled && trade.closed.startsWith(monthKey) && symbols.includes(trade.symbol))
+      ? deletedTrades.filter((trade) => accountEnabled && trade.closed?.startsWith(monthKey) && symbols.includes(trade.symbol))
       : monthTrades)
       .filter((trade) => !selectedDay || tradeDay(trade) === selectedDay)
-      .sort((a, b) => b.closed.localeCompare(a.closed)),
+      .sort((a, b) => (b.closed ?? '').localeCompare(a.closed ?? '')),
     [accountEnabled, deletedTrades, monthKey, monthTrades, selectedDay, showDeletedTrades, symbols],
   )
   const stats = useMemo(() => {
@@ -158,7 +165,7 @@ function App() {
       streak += 1
     }
     const drawdown = [...monthTrades]
-      .sort((a, b) => a.closed.localeCompare(b.closed))
+      .sort((a, b) => (a.closed ?? '').localeCompare(b.closed ?? ''))
       .reduce((state, trade) => {
         const balance = state.balance + trade.pnl
         const peak = Math.max(state.peak, balance)
@@ -225,11 +232,11 @@ function App() {
 
   const chartData = useMemo(
     () => [...monthTrades]
-      .sort((a, b) => a.closed.localeCompare(b.closed))
+      .sort((a, b) => (a.closed ?? '').localeCompare(b.closed ?? ''))
       .reduce<{ time: string; pnl: number }[]>((points, trade) => [
         ...points,
         {
-          time: new Date(trade.closed).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          time: new Date(trade.closed ?? '').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
           pnl: Number(((points.at(-1)?.pnl ?? 0) + trade.pnl).toFixed(2)),
         },
       ], []),
@@ -271,6 +278,7 @@ function App() {
     setShowDeletedTrades(false)
     setShowImport(false)
     setShowReminder(false)
+    setShowTradeList(false)
     setToastMessage('')
   }
 
@@ -355,6 +363,10 @@ function App() {
               : <>
       <header className="app-header">
         <a className="brand" href="#dashboard">Trading Journal</a>
+        <nav className="main-navigation" aria-label="Main navigation">
+          <button aria-current={showTradeList ? undefined : 'page'} onClick={() => setShowTradeList(false)} type="button">Dashboard</button>
+          <button aria-current={showTradeList ? 'page' : undefined} onClick={() => setShowTradeList(true)} type="button">Trades</button>
+        </nav>
         <nav className="period-tabs" aria-label="Date range">
           {periods.map((period, index) => (
             <button
@@ -420,7 +432,13 @@ function App() {
         </div>
       )}
 
-      <main id="dashboard" className="dashboard">
+      {showTradeList ? (
+        <TradeManagementScreen
+          accounts={tradingAccounts}
+          accessToken={authSession.accessToken}
+          onAuthenticationRequired={requireAuthentication}
+        />
+      ) : <main id="dashboard" className="dashboard">
         <section className="metric-grid" aria-label="Monthly summary">
           <article className="metric-card">
             <div className="metric-label">Net P&amp;L</div>
@@ -552,7 +570,7 @@ function App() {
                     <td><span className={`side-badge ${trade.side === 'LONG' ? 'badge-long' : 'badge-short'}`}>{trade.side}</span></td>
                     <td className="numeric">{trade.size.toFixed(2)}</td>
                     <td>{trade.entry.toLocaleString('en-US')} → {trade.exit.toLocaleString('en-US')}</td>
-                    <td>{new Date(trade.closed).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' })} {new Date(trade.closed).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
+                    <td>{trade.closed ? new Date(trade.closed).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }) : 'Open'}</td>
                     <td className={`numeric ${valueClass(trade.pnl)}`}>{fmtMoney(trade.pnl)}</td>
                     <td className="numeric">{trade.r === null ? <span className="no-risk" title="R not entered">—</span> : <><span className={valueClass(trade.r)}>{fmtR(trade.r)}</span>{Math.abs(trade.r) > 5 && <span className="warning-text" title="Review this manually entered R value"> · review</span>}</>}</td>
                     <td className="source-cell">{trade.source === 'MANUAL' ? 'Manual' : `Eightcap · ${trade.ticket || '—'}`}{trade.closes > 1 && <span> · closed {trade.closes} times</span>}</td>
@@ -560,8 +578,8 @@ function App() {
                       {showDeletedTrades
                         ? <button className="row-action restore-action" onClick={() => restoreTrade(trade.id)} aria-label={`Restore ${trade.symbol} trade`} title="Restore trade" type="button"><RotateCcw size={15} /></button>
                         : <>
-                          <button className="row-action" onClick={() => editTrade(trade)} aria-label={`Edit trade ${trade.symbol} ${trade.closed.slice(5, 10)}`} title="Edit" type="button"><Pencil size={15} /></button>
-                          <button className="row-action delete-action" onClick={() => setTradeToDelete(trade)} aria-label={`${trade.source === 'IMPORT' ? 'Hide' : 'Delete'} trade ${trade.symbol} ${trade.closed.slice(5, 10)}`} title={trade.source === 'IMPORT' ? 'Hide' : 'Delete'} type="button"><Trash2 size={15} /></button>
+                          <button className="row-action" onClick={() => editTrade(trade)} aria-label={`Edit trade ${trade.symbol}`} title="Edit" type="button"><Pencil size={15} /></button>
+                          <button className="row-action delete-action" onClick={() => setTradeToDelete(trade)} aria-label={`${trade.source === 'IMPORT' ? 'Hide' : 'Delete'} trade ${trade.symbol}`} title={trade.source === 'IMPORT' ? 'Hide' : 'Delete'} type="button"><Trash2 size={15} /></button>
                         </>}
                     </td>
                   </tr>
@@ -571,9 +589,14 @@ function App() {
             </table>
           </div>
         </section>
-      </main>
+      </main>}
 
-      {tradeEditor && <TradeEditorModal trade={tradeEditor.trade} onClose={() => setTradeEditor(null)} onSave={saveTrade} />}
+      {tradeEditor && <TradeEditorModal
+        trade={tradeEditor.trade}
+        accountLabel={tradingAccounts[0] ? `${tradingAccounts[0].name} · ${tradingAccounts[0].broker} (${tradingAccounts[0].currency})` : 'Trading account'}
+        onClose={() => setTradeEditor(null)}
+        onSave={saveTrade}
+      />}
 
       {tradeToDelete && (
         <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setTradeToDelete(null) }}>
@@ -625,7 +648,7 @@ function App() {
               <div><span>Entry price</span><strong>{selectedTrade.entry.toLocaleString('en-US')}</strong></div>
               <div><span>Average exit</span><strong>{selectedTrade.exit.toLocaleString('en-US')}</strong></div>
               <div><span>Position size</span><strong>{selectedTrade.size.toFixed(2)} lot</strong></div>
-              <div><span>Closed</span><strong>{new Date(selectedTrade.closed).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</strong></div>
+              <div><span>Closed</span><strong>{selectedTrade.closed ? new Date(selectedTrade.closed).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'Open'}</strong></div>
               <div><span>R multiple</span><strong>              {selectedTrade.r === null ? 'Not entered' : fmtR(selectedTrade.r)}</strong></div>
               <div><span>Close executions</span><strong>{selectedTrade.closes}</strong></div>
             </div>
