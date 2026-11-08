@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import TradeEditorModal from './trade-editor-modal'
+import TradeContextPanel from './trade-context-panel'
+import { ContextRequestError, listTags, type TagRecord } from '../lib/context'
 import {
   createManualTrade,
   deleteTrade,
@@ -86,7 +88,7 @@ function fromListRecord(record: TradeRecord): Trade {
     closed: localDateTime(record.closedAt) || null,
     closes: record.closeCount,
     comment: sourceOf(record) === 'MANUAL' ? 'Manual entry' : 'Imported trade',
-    tags: [],
+    tags: record.tags,
     notes: '',
   }
 }
@@ -141,6 +143,8 @@ function TradeManagementScreen({
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
   const [symbol, setSymbol] = useState('')
+  const [tags, setTags] = useState<TagRecord[]>([])
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([])
   const [showDeleted, setShowDeleted] = useState(false)
   const [page, setPage] = useState(0)
   const [tradePage, setTradePage] = useState<{ content: TradeRecord[]; totalElements: number; totalPages: number }>({
@@ -163,6 +167,21 @@ function TradeManagementScreen({
     : 'Select a trading account'
 
   useEffect(() => {
+    let active = true
+    listTags(accessToken)
+      .then((result) => { if (active) setTags(result) })
+      .catch((requestError: unknown) => {
+        if (!active) return
+        if (requestError instanceof ContextRequestError && requestError.status === 401) {
+          onAuthenticationRequired()
+          return
+        }
+        setError(requestError instanceof Error ? requestError.message : 'Unable to load tags.')
+      })
+    return () => { active = false }
+  }, [accessToken, onAuthenticationRequired])
+
+  useEffect(() => {
     if (accountId === null) return
     let active = true
     Promise.resolve()
@@ -175,6 +194,7 @@ function TradeManagementScreen({
           page,
           size: pageSize,
           symbol: symbol.trim() || undefined,
+          tagIds: showDeleted ? undefined : selectedTagIds,
           from: showDeleted ? undefined : from || undefined,
           to: showDeleted ? undefined : to || undefined,
           deleted: showDeleted,
@@ -197,7 +217,7 @@ function TradeManagementScreen({
     return () => {
       active = false
     }
-  }, [accessToken, accountId, from, onAuthenticationRequired, page, showDeleted, symbol, to])
+  }, [accessToken, accountId, from, onAuthenticationRequired, page, selectedTagIds, showDeleted, symbol, to])
 
   const trades = useMemo(() => tradePage.content.map(fromListRecord), [tradePage.content])
 
@@ -212,6 +232,7 @@ function TradeManagementScreen({
         page,
         size: pageSize,
         symbol: symbol.trim() || undefined,
+        tagIds: showDeleted ? undefined : selectedTagIds,
         from: showDeleted ? undefined : from || undefined,
         to: showDeleted ? undefined : to || undefined,
         deleted: showDeleted,
@@ -376,6 +397,26 @@ function TradeManagementScreen({
                 <span>Symbol</span>
                 <input value={symbol} placeholder="All symbols" onChange={(event) => { setSymbol(event.target.value); resetPage() }} />
               </label>
+              {tags.length > 0 && (
+                <fieldset className="tag-filter-list">
+                  <legend>Tags (match any)</legend>
+                  {tags.map((tag) => (
+                    <label key={tag.id}>
+                      <input
+                        type="checkbox"
+                        checked={selectedTagIds.includes(tag.id)}
+                        onChange={() => {
+                          setSelectedTagIds((current) => current.includes(tag.id)
+                            ? current.filter((id) => id !== tag.id)
+                            : [...current, tag.id])
+                          resetPage()
+                        }}
+                      />
+                      {tag.name}
+                    </label>
+                  ))}
+                </fieldset>
+              )}
             </>
           )}
         </div>
@@ -386,7 +427,7 @@ function TradeManagementScreen({
             <thead>
               <tr>
                 <th>Pair</th><th>Side</th><th className="numeric">Size</th><th>Entry → Exit</th><th>Closed</th>
-                <th className="numeric">P&amp;L ({account?.currency ?? 'USD'})</th><th className="numeric">R</th><th>Source</th><th className="numeric">Actions</th>
+                <th className="numeric">P&amp;L ({account?.currency ?? 'USD'})</th><th className="numeric">R</th><th>Source</th><th>Tags</th><th className="numeric">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -400,6 +441,7 @@ function TradeManagementScreen({
                   <td className={`numeric ${valueClass(trade.pnl)}`}>{fmtMoney(trade.pnl)}</td>
                   <td className="numeric">{trade.r === null ? '—' : fmtR(trade.r)}</td>
                   <td>{trade.source === 'MANUAL' ? 'Manual' : `${trade.ticket || 'Imported'} · ${trade.closes} close${trade.closes === 1 ? '' : 's'}`}</td>
+                  <td><div className="trade-tag-chips">{trade.tags.map((tag) => <span className="tag-chip" key={tag}>{tag}</span>)}</div></td>
                   <td className="trade-actions" onClick={(event) => event.stopPropagation()}>
                     {showDeleted
                       ? <button className="row-action restore-action" onClick={() => { void restoreDeleted(trade) }} aria-label={`Restore ${trade.symbol} trade`} type="button"><RotateCcw size={15} /></button>
@@ -411,9 +453,9 @@ function TradeManagementScreen({
                 </tr>
               ))}
               {!loading && trades.length === 0 && (
-                <tr><td className="empty-table" colSpan={9}>{showDeleted ? 'No deleted trades.' : 'No trades match these filters.'}</td></tr>
+                <tr><td className="empty-table" colSpan={10}>{showDeleted ? 'No deleted trades.' : 'No trades match these filters.'}</td></tr>
               )}
-              {loading && <tr><td className="empty-table" colSpan={9}>Loading trades…</td></tr>}
+              {loading && <tr><td className="empty-table" colSpan={10}>Loading trades…</td></tr>}
             </tbody>
           </table>
         </div>
@@ -483,6 +525,11 @@ function TradeManagementScreen({
                 </div>
               ))}
             </div>
+            <TradeContextPanel
+              tradeId={selectedTrade.id}
+              accessToken={accessToken}
+              onAuthenticationRequired={onAuthenticationRequired}
+            />
             <div className="detail-actions">
               <button className="secondary-button" type="button" onClick={() => { void editTrade(selectedTrade) }}>
                 {selectedTrade.source === 'IMPORT' ? 'Edit R' : 'Edit trade'}

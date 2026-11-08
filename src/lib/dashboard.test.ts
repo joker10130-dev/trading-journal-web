@@ -19,6 +19,7 @@ const summary: DashboardSummary = {
   cumulative: [{ date: '2026-11-08', cumulativeNetPnl: 10 }],
   weekly: [{ startDate: '2026-11-02', endDate: '2026-11-08', tradeCount: 1, netPnl: 10 }],
   availableSymbols: ['XAUUSD'],
+  emotionMeter: { positiveTradeCount: 0, emotionTradeCount: 0, positivePercentage: 0 },
 }
 
 describe('dashboard summary requests', () => {

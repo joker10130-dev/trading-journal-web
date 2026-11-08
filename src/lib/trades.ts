@@ -28,6 +28,7 @@ export type TradeRecord = {
   hasTradesReport: boolean
   hasTradingViewData: boolean
   closeCount: number
+  tags: string[]
 }
 
 export type TradeCloseRecord = {
@@ -131,6 +132,8 @@ function isTradeRecord(value: unknown): value is TradeRecord {
     && typeof value.hasTradesReport === 'boolean'
     && typeof value.hasTradingViewData === 'boolean'
     && typeof value.closeCount === 'number'
+    && Array.isArray(value.tags)
+    && value.tags.every((tag) => typeof tag === 'string')
 }
 
 function isTradePage(value: unknown): value is TradePage {
@@ -235,12 +238,13 @@ async function request<T>(
 export function listTrades(
   accountId: number,
   accessToken: string,
-  options: { page: number; size: number; symbol?: string; from?: string; to?: string; deleted?: boolean },
+  options: { page: number; size: number; symbol?: string; from?: string; to?: string; tagIds?: number[]; deleted?: boolean },
 ): Promise<TradePage> {
   const query = new URLSearchParams({ page: String(options.page), size: String(options.size) })
   if (options.symbol) query.set('symbol', options.symbol)
   if (options.from) query.set('from', options.from)
   if (options.to) query.set('to', options.to)
+  options.tagIds?.forEach((tagId) => query.append('tagIds', String(tagId)))
   const deletedPath = options.deleted ? '/deleted' : ''
   return request(`/api/v1/trading-accounts/${accountId}/trades${deletedPath}?${query}`, accessToken, 'GET', isTradePage)
 }

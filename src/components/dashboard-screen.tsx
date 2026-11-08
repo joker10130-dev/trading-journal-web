@@ -202,6 +202,26 @@ function DashboardScreen({
               <div className="metric-value">{summary.dailyStreak} days</div>
               <div className="metric-sub">consecutive days with positive total R</div>
             </article>
+            <article className="metric-card emotion-meter-card">
+              <div className="metric-label">Positive emotions</div>
+              {summary.emotionMeter.emotionTradeCount === 0
+                ? <div className="metric-sub emotion-empty">No trades tagged with an emotion</div>
+                : <>
+                    <div
+                      className="emotion-donut"
+                      role="img"
+                      aria-label={`${summary.emotionMeter.positivePercentage}% positive emotions`}
+                      style={{
+                        background: `conic-gradient(var(--green) ${summary.emotionMeter.positivePercentage}%, var(--panel-raised) 0)`,
+                      }}
+                    >
+                      <span>{summary.emotionMeter.positivePercentage.toFixed(1)}%</span>
+                    </div>
+                    <div className="metric-sub">
+                      {summary.emotionMeter.positiveTradeCount}/{summary.emotionMeter.emotionTradeCount} emotion-tagged trades
+                    </div>
+                  </>}
+            </article>
           </section>
 
           <section className="panel chart-panel">

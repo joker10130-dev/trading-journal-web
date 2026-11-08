@@ -26,6 +26,11 @@ export type DashboardSummary = {
   cumulative: { date: string; cumulativeNetPnl: number }[]
   weekly: { startDate: string; endDate: string; tradeCount: number; netPnl: number }[]
   availableSymbols: string[]
+  emotionMeter: {
+    positiveTradeCount: number
+    emotionTradeCount: number
+    positivePercentage: number
+  }
 }
 
 export type DashboardQuery = {
@@ -90,6 +95,10 @@ function isDashboardSummary(value: unknown): value is DashboardSummary {
       && typeof week.netPnl === 'number')
     && Array.isArray(value.availableSymbols)
     && value.availableSymbols.every((symbol) => typeof symbol === 'string')
+    && isRecord(value.emotionMeter)
+    && typeof value.emotionMeter.positiveTradeCount === 'number'
+    && typeof value.emotionMeter.emotionTradeCount === 'number'
+    && typeof value.emotionMeter.positivePercentage === 'number'
 }
 
 export async function getDashboardSummary(
